@@ -21,7 +21,7 @@ def get_city_weather(city):
     response.raise_for_status()
     return response.text
 
-
+#search_knowledge base is the tool which is used for RAG (Retrieval-Augmented Generation) to search the knowledge base for relevant information based on the user's query. It uses the search function from rag.py to find the top_k relevant chunks of text from the knowledge base and returns them as a formatted string.
 def search_knowledge_base(query): #ye tool user query ko input ke roop mein leta hai aur knowledge base mein search karta hai aur top_k results return karta hai.
     results = search(query, top_k=2)
 
