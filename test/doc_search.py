@@ -68,7 +68,7 @@ def add_embeddings(documents):
     return documents 
 
 
-#search method to search the top_k documents for a user_query based on cosine similarity
+#search method to search the top_k documents for a user_query using cosine similarity
 def search_documents(query, documents, top_k=3): #query is user query here,default top_k is 3, agar user koi value specify nahi karta hai toh ye default value use karega.
     query_vector=get_embedding(query) #get_embedding() function ka use karke user_query ka embedding generate kar rahe hain.
 
