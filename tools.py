@@ -1,7 +1,11 @@
 from datetime import datetime
+from utilities.utilities import log
 import requests
 import sqlite3
 import json
+
+def get_user_city():
+    return "Bangalore"  # Replace with your desired city
 
 def get_current_time(): #method or tool or function to get current time
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -9,6 +13,7 @@ def get_current_time(): #method or tool or function to get current time
 def get_city_weather(city): #method or tool or function to get weather of city
     url = f"https://wttr.in/{city}?format=3" #url to get weather of city
     response=requests.get(url,timeout=10) #requests.get() is used to send a GET request to the specified URL and retrieve the response from the server.timeout=10 means that if the server does not respond within 10 seconds, the request will be aborted and an exception will be raised.
+    response.raise_for_status() #raise_for_status() is used to raise an exception if the HTTP request returned an unsuccessful status code. If the response was successful (status code 200), this method does nothing. If the response was unsuccessful (e.g., 404, 500), it raises an HTTPError exception with information about the error.
     return response.text #response.text is used to get the content of the response as a string. It returns the text of the response, which can be useful for extracting information or displaying it to the user.
 
 
@@ -119,7 +124,7 @@ TOOLS = [ #information of tools used
       "type" : "function", #type of tool is function
       "function" : {
              "name" : "get_current_time", 
-             "description" : "Get the current date and time in YYYY-MM-DD HH:MM:SS format.",
+             "description" : "Get the current date and time in YYYY-MM-DD HH:MM:SS format.",#tool ka description aesa do ki model ko aasani se samajh aa jaye ki ye tool kya karta hai
              "parameters" : { "type" : "object", "properties" : {}}
       }
     },
@@ -128,10 +133,17 @@ TOOLS = [ #information of tools used
       "function" : {
              "name" : "get_city_weather",
              "description" : "Get the weather information for a specified city.",
-             "parameters" : { "type" : "object", "properties" : { "city" : { "type" : "string", "description" : "The name of the city for which to get weather information." }}}
+             "parameters" : { "type" : "object", "properties" : { "city" : { "type" : "string", "description" : "The name of the city for which to get weather information." }},"required" : ["city"]}
       }
     },
-    
+    {
+        "type" : "function",
+        "function" : {
+                 "name" : "get_user_city",
+                 "description" : "Returns the city where the user lives.use this when the user says 'my city' or 'where I live'or 'my location' without naming the city.",
+                 "parameters" : { "type" : "object", "properties" : {}}
+        }
+    },
     {
         "type": "function",
         "function": {
@@ -183,7 +195,34 @@ TOOLS = [ #information of tools used
 FUNCTION_NAME_TO_FUNCTION_MAP = { #key-value pair
     "get_current_time" : get_current_time,
     "get_city_weather" : get_city_weather,
+    "get_user_city" : get_user_city,
     "add_task" : add_task,
     "list_tasks" : list_tasks,
     "complete_task" : complete_task
 }
+
+def run_tool(tool_call):
+    func_name = tool_call.function.name
+    func_args = {}
+
+    try:
+        func_args = json.loads(tool_call.function.arguments or "{}")
+        log(f"🔧 {func_name}({func_args})")
+        fn = FUNCTION_NAME_TO_FUNCTION_MAP[func_name]
+        result = fn(**func_args)
+    except Exception as e:
+        result = f"Error while running {func_name} : {e}"
+
+    log(f"   ↳ {result}")
+    return str(result)
+
+#    func_name = tool_call.function.name
+#       # 2. Fixed typo: arguements -> arguments
+#       func_args={}
+
+#       try:
+#            func_args = json.loads(tool_call.function.arguments or "{}") #json.loads() is used to parse a JSON string and convert it into a Python dictionary.dictionary is a data structure that stores key-value pairs, allowing you to access values using their corresponding keys.
+#            fn = FUNCTION_NAME_TO_FUNCTION_MAP[func_name]
+#            result = fn(**func_args) #calling of function with unpacked arguements#deferencing operator is used to unpack the dictionary and pass its key-value pairs as keyword arguments to the function.arguements are parameters or inputs that are passed to a function when it is called. 
+#       except Exception as e:
+#            result = f"Error while running '{func_name}': {e}"

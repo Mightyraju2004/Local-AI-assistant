@@ -1,170 +1,275 @@
-import json
-import os
-from dotenv import load_dotenv
-from openai import OpenAI #Library OpenAI ki hai
-#we have to use openai library to call llm api because it is standard protocol for developers of ai in world,we have to import openai if we want to write api using openai standard.
-#openai is standard api.openai ne chatgpt bnaya
-# client.chat.completions.create method hai, yeh sirf aur sirf openai package ke andar hi likha hua hai.
-# OpenAI Standard Protocol ban chuka hai:
-# Jab AI world me OpenAI mashhoor hua, toh openai ka code likhne ka tareeka (client.chat.completions.create) sabse zyada use hone laga aur jagah bhi.
-#ollama sends response into json format but we use openai so wo json format ko object mai convert krdeta hai
-# to basically humare code mai ollama ka llm model qwen3:4b use ho rha hai but written format open ai ka use ho rha hai,to use written format of openai, we have to use openai library
-from tools import FUNCTION_NAME_TO_FUNCTION_MAP, TOOLS
+# import json
+# #standard library imports
+# import os
 
-load_dotenv()
+# #third-party imports
+# from dotenv import load_dotenv
+# from openai import OpenAI #Library OpenAI ki hai
+# #we have to use openai library to call llm api because it is standard protocol for developers of ai in world,we have to import openai if we want to write api using openai standard.
+# #openai is standard api.openai ne chatgpt bnaya
+# # client.chat.completions.create method hai, yeh sirf aur sirf openai package ke andar hi likha hua hai.
+# # OpenAI Standard Protocol ban chuka hai:
+# # Jab AI world me OpenAI mashhoor hua, toh openai ka code likhne ka tareeka (client.chat.completions.create) sabse zyada use hone laga aur jagah bhi.
+# #ollama sends response into json format but we use openai so wo json format ko object mai convert krdeta hai
+# # to basically humare code mai ollama ka llm model qwen3:4b use ho rha hai but written format open ai ka use ho rha hai,to use written format of openai, we have to use openai library
 
-client = OpenAI(base_url=os.getenv("BASE_URL"), api_key=os.getenv("API_KEY")) #if we write only OpenAI() then it will call OpenAI ak koi bhi default model and api key but hume apna model and api key use karna hai so we have to pass out base_url and api_key in OpenAI() function
+# #local modules
+# from tools import TOOLS, run_tool #run_tool is method to run the tool and get the result of the tool call
+# from utilities.utilities import log #log is method to print debug messages in gray color, it is used to print debug messages in gray color when DEBUG environment variable is set to True.
 
-MAX_HISTORY_MESSAGES = 12
-MAX_TOOL_ROUNDS = 3
+# load_dotenv()
+
+# client = OpenAI(base_url=os.getenv("BASE_URL"), api_key=os.getenv("API_KEY")) #if we write only OpenAI() then it will call OpenAI ak koi bhi default model and api key but hume apna model and api key use karna hai so we have to pass out base_url and api_key in OpenAI() function
+
+# MAX_STEPS = 5  # Maximum number of tool calls to prevent infinite tool calling ot infinite loops
+
+# messages = [
+#     {
+#         "role": "system",
+#         "content": (
+#     "You are a helpful general-purpose AI assistant and personal productivity assistant. "
+#     "Reply in concise English. "
+#     "Answer general knowledge questions using your existing knowledge. "
+#     "Do not use tools for simple factual questions unless necessary. "
+#     "Use available tools for task management, current time, and weather when appropriate. "
+#     "Never claim a tool succeeded unless its result confirms it."
+# )
+        
+#     }
+# ]
+
+# print("Chatbot started! Type 'exit' to quit.\n")
+
+# while True: #loop to keep the chatbot running until the user decides to exit
+#   user_input = input("\nShubhanshu: ")
+
+#   if user_input.lower() in ["exit", "quit", "bye", "goodbye"]:
+#     print("Assistant: Goodbye!")
+#     break
 
 
-def trim_history():
-    global messages
+#   messages.append({"role": "user", "content": user_input})
+#   print("Assistant is thinking...")
 
-    history = [
-        item for item in messages[1:]
-        if item.get("role") in ("user", "assistant")
-        and isinstance(item.get("content"), str)
-        and item["content"].strip()
-    ]
+#   #ist call to llm api with tools
+#   # 1. Added comma after messages=messages
+#   #ist llm api call mai hum query mai avaliable tools aur puri message list bhejenge phir llm khud context samajhke tools bhejega ki konsa tool required hai
 
-    messages[:] = [messages[0]] + history[-MAX_HISTORY_MESSAGES:]
 
-messages = [
-    {
-        "role": "system",
-        "content": (
-        "You are a helpful personal productivity assistant. "
-        "Reply in English and keep answers concise. "
-        "Use available tools to add, list, and complete tasks. "
-        "Never claim an action succeeded unless the tool result confirms it. "
-        "If a tool fails, inspect the error and correct the arguments "
-        "when possible. Do not repeat a failing action indefinitely. "
-        "Ask the user for clarification if required information is missing. "
-        "Do not claim access to live information unless a suitable tool "
-        "provides it."
-        ),
-    }
-]
+# # chained tool calling
+#   for step in range(MAX_STEPS): #loop to limit the number of tool calls to prevent infinite loops
 
-print("Chatbot started! Type 'exit' to quit.\n")
+#     #call to llm api(request to llm api by user query) with tools.by this call we get response from llm api
+#     response = client.chat.completions.create(
+#           model=os.getenv("MODEL"), messages=messages, tools=TOOLS
+#       )
+    
+#     msg = response.choices[0].message
 
-while True: #loop to keep the chatbot running until the user decides to exit
-  user_input = input("\nShubhanshu: ")
+#     if not msg.tool_calls:  #if tool_calls is empty then break the loop
+#       break
 
-  if user_input.lower() in ["exit", "quit", "bye", "goodbye"]:
-    print("Assistant: Goodbye!")
-    break
+#     log(f"Step {step + 1}: model requested {len(msg.tool_calls)}tool call(s).")
 
-  trim_history()  # Sliding-window memory
+#     messages.append(msg)
 
-  messages.append({"role": "user", "content": user_input})
-  print("Assistant is thinking...")
+#     for tool_call in msg.tool_calls:
+#       result = run_tool(tool_call) #run_tool is method to run the tool and get the result of the tool call
+      
+#       messages.append({
+#           "role": "tool",
+#           "tool_call_id": tool_call.id,  #konsa tool hai vo bhi pata hona chahiye thats why we are storing tool_id
+#           "content": str(result),
+#       })
+#     #for block ends
 
-  #ist call to llm api with tools
-  # 1. Added comma after messages=messages
-  #ist llm api call mai hum query mai avaliable tools aur puri message list bhejenge phir llm khud context samajhke tools bhejega ki konsa tool required hai
-  response = client.chat.completions.create(
-      model=os.getenv("MODEL"), messages=messages, tools=TOOLS
-  )
+#   else:
+#        #ran out of steps,model will never gave the final answer
+#        fallback="Sorry, I couldn't complete the task within the step limit. Please try again."
+#        messages.append({"role": "assistant", "content": fallback})
+#        print("Assistant:" + fallback)
+#        continue
 
-  msg = response.choices[0].message
+#     # # 2nd call to llm api after tool execution to get the final response from the assistant(like its currently 8:30 pm in tokyo)
+#     # response = client.chat.completions.create(
+#     #     model=os.getenv("MODEL"), messages=messages
+#     # )
 
-  # if msg.tool_calls:
-  #   messages.append(msg)
+#     # msg = response.choices[0].message #abhi jo assistant ka response hai recently waala after calling llm api usko msg variable me store kar diya
 
-  #   for tool_call in msg.tool_calls:
-  #     func_name = tool_call.function.name
-  #     # 2. Fixed typo: arguements -> arguments
-  #     func_args = json.loads(tool_call.function.arguments or "{}") #json.loads() is used to parse a JSON string and convert it into a Python dictionary.dictionary is a data structure that stores key-value pairs, allowing you to access values using their corresponding keys.
+#   #if condition ends
+#   messages.append({"role": "assistant", "content": msg.content}) 
 
-  #     fn = FUNCTION_NAME_TO_FUNCTION_MAP[func_name]
-  #     result = fn(**func_args) #calling of function with unpacked arguements#deferencing operator is used to unpack the dictionary and pass its key-value pairs as keyword arguments to the function.arguements are parameters or inputs that are passed to a function when it is called. 
-  #     messages.append({
-  #         "role": "tool",
-  #         "tool_id": tool_call.id,  #konsa tool hai vo bhi pata hona chahiye thats why we are storing tool_id
-  #         "content": str(result),
-  #     })
-  #   #for block ends
+#   print("Assistant:" + msg.content or "") #recently waala message ka response print kar diya
 
-  #   # 2nd call to llm api after tool execution to get the final response from the assistant(like its currently 8:30 pm in tokyo)
-  #   response = client.chat.completions.create(
-  #       model=os.getenv("MODEL"), messages=messages
-  #   )
-
-  #   msg = response.choices[0].message #abhi jo assistant ka response hai recently waala after calling llm api usko msg variable me store kar diya
-
-  # #if condition ends
-  # messages.append({"role": "assistant", "content": msg.content}) 
-
-  # print("Assistant:" + msg.content) #recently waala message ka response print kar diya
-
-    # 5. Extract and print the response INSIDE the loop
-    # reply = response.choices[0].message.content
-    # print("Assistant: " + reply)
-    # print(response.choices[0].message.role); #assistant
-
-    # # 6. Save assistant's reply to history for context
-    # messages.append({"role": "assistant", "content": reply})
+   
     
   
-  if msg.tool_calls:
-      messages.append(msg.model_dump(exclude_none=True))
-      tool_rounds = 0
+# standard library imports
+import os
 
-      while msg.tool_calls and tool_rounds < MAX_TOOL_ROUNDS:
-          tool_rounds += 1
+# Third-party imports
+from openai import OpenAI
+from dotenv import load_dotenv
+from types import SimpleNamespace
 
-          for tool_call in msg.tool_calls:
-              func_name = tool_call.function.name
+# Local modules
+from tools import TOOLS, run_tool
+from utilities.utilities import log
 
-              try:
-                  func_args = json.loads(
-                      tool_call.function.arguments or "{}"
-                  )
 
-                  if not isinstance(func_args, dict):
-                      raise ValueError("Arguments must be a JSON object.")
 
-                  fn = FUNCTION_NAME_TO_FUNCTION_MAP.get(func_name)
+load_dotenv() #by default looks for .env file
 
-                  if fn is None:
-                      raise ValueError(f"Unknown tool: {func_name}")
+client = OpenAI(
+    base_url=os.getenv("BASE_URL"),
+    api_key=os.getenv("API_KEY")
+)
 
-                  result = fn(**func_args)
+messages = []
 
-              except (ValueError, TypeError) as error:
-                  result = f"Tool error: {error}. Correct the arguments."
+# Safety limit: the max number of model rounds for ONE user question
+MAX_STEPS = 5
 
-              except Exception as error:
-                  print("Tool execution error:", error)
-                  result = "Tool execution failed. Do not claim success."
+messages.append(
+    {
+        "role" : "system",
+        "content": (
+                    "You are a helpful, humble assistant. "
+                    "Answer general questions (programming, science, advice) from your own knowledge. "
+                    "Use a tool ONLY when the user asks for the current time, the weather, or their city. "
+                    "Keep answers under 100 words."
+                )
+    }
+)
 
-              messages.append({
-                  "role": "tool",
-                  "tool_call_id": tool_call.id,
-                  "content": str(result),
-              })
+def stream_chat(history):
+    stream = client.chat.completions.create(
+            model=os.getenv("MODEL"),
+            messages=history,
+            tools=TOOLS,
+            stream=True,
+        )
 
-          response = client.chat.completions.create(
-              model=os.getenv("MODEL"),
-              messages=messages,
-              tools=TOOLS,
-          )
-          msg = response.choices[0].message
+    full_response = ""
+    calls = {}
+    label_printed = False
 
-      if msg.tool_calls:
-          final_answer = (
-              "I couldn't complete the request within the allowed "
-              "number of tool rounds. Please try again."
-          )
-      else:
-          final_answer = msg.content or "I couldn't generate a response."
+    #Streaming started
+    try:
+        for chunk in stream:
+            if not chunk.choices:
+                continue
 
-  else:
-      final_answer = msg.content or "I couldn't generate a response."
+            delta = chunk.choices[0].delta
 
-  messages.append({"role": "assistant", "content": final_answer})
-  print("Assistant:", final_answer)
+            #1. Content Streaming : Do we have message (content) from the LLM
+            if delta.content:
+                if not label_printed:
+                    print("🤖 Assistant: ", end="", flush=True)
+                    label_printed = True
+                print(delta.content, end="", flush=True)
+                full_response += delta.content
 
+            #2. Tool Calls
+            for tc in (delta.tool_calls or []):
+                obj = calls.setdefault(
+                    tc.index,
+                    SimpleNamespace(id=None, function=SimpleNamespace(name="", arguments="")),
+                )
+                if tc.id:
+                    obj.id = tc.id
+                if tc.function and tc.function.name:
+                    obj.function.name += tc.function.name
+                if tc.function and tc.function.arguments:
+                    obj.function.arguments += tc.function.arguments
+
+    except KeyboardInterrupt:
+        print("\n {Stopped By You}")
+        calls = {}
+    
+    if label_printed:
+        print()  # Move to the next line after the assistant's response
+
+    calls_list = []
+    for key in sorted(calls):
+        calls_list.append(calls[key])
+    
+    return full_response, calls_list
+
+
+def build_tool_calls_payload(tool_calls):
+    """
+    Converts our collected tool calls into the dict format
+    that the API expects inside an assistant message.
+    """
+
+    payload = []
+    for tool_call in tool_calls:
+        tool_call_dict = {
+            "id": tool_call.id,
+            "type": "function",
+            "function": {
+                "name": tool_call.function.name,
+                "arguments": tool_call.function.arguments,
+            },
+        }
+        payload.append(tool_call_dict)
+
+    return payload
+    
+
+# Chat loop starts from here
+while True:
+
+    user_input = input("\n👦🏻 Shubhanshu: ")
+    
+    if user_input.lower() in ["exit", "quit", "bye", "goodbye"]:
+        break
+
+    messages.append(
+        {
+            "role": "user",
+            "content": user_input
+        }
+    )
+
+    # Chained Tool Calling
+    for step in range(MAX_STEPS):
+        full_response, tool_calls = stream_chat(messages)
+
+        #msg = response.choices[0].message
+
+        if not tool_calls:
+            break
+
+        log(f"Step {step + 1}: model requested {len(tool_calls)} tool calls")
+
+        messages.append({
+            "role": "assistant",
+            "content": full_response,
+            "tool_calls": build_tool_calls_payload(tool_calls)
+        })
+
+        for tool_call in tool_calls:
+            result = run_tool(tool_call)
+            messages.append({
+                "role": "tool",
+                "tool_call_id" : tool_call.id,
+                "content" : str(result),
+            })
+
+    else:
+        # Ran out of steps: The model never gave the final answer
+        fallback = "Sorry, I could not finish this within the step limit."
+        messages.append({
+            "role": "assistant",
+            "content": fallback
+        })
+        print("🤖 Assistant: " + fallback)
+        continue
+
+    messages.append({
+            "role": "assistant",
+            "content": full_response
+    })
