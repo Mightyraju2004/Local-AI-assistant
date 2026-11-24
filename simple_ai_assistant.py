@@ -117,14 +117,34 @@ from types import SimpleNamespace
 from tools import TOOLS, run_tool
 from utilities.utilities import log
 
+# LLM API means an Application Programming Interface through which our application/project can communicate with an LLM (Large Language Model).
+# For example:
+# - Our Python project sends a user's question through an LLM API.
+# - The LLM processes the question.
+# - The API returns the LLM's response to our project.
 
+#LLM API ke examples hain:
+# LLM Provider	API
+# OpenAI	OpenAI API
+# Google	Gemini API
+# Anthropic	Claude API
+# Ollama	Ollama API
+# Groq	Groq API
+# Mistral	Mistral API
 
+ # A lot of developers use the OpenAI Python client to communicate with LLM APIs because many LLM providers support the OpenAI-compatible API format.
 load_dotenv() #by default looks for .env file
-
-client = OpenAI(
+#In our project, we are not using OpenAI's API. we are using Ollama's API.
+#`OpenAI()` creates a client object that allows us to communicate with an LLM API. We generally create it once and reuse it wherever API calls to llm are required. It is not necessary in files that don't make API requests  to llm
+#project mein Ollama ki API ko request bhej rahe hain, OpenAI ki hosted API ko nahi.
+client = OpenAI( #OpenAI ka client object create kar diya jisme base_url aur api_key pass kiya hai jo .env file se liya gaya hai(client is object)
     base_url=os.getenv("BASE_URL"),
     api_key=os.getenv("API_KEY")
 )
+
+# OpenAI() → Creates the client object.
+# client → Used to send requests to the LLM API.
+#client.chat.completions.create() is used to send a chat completion request to the LLM API through the OpenAI client  and receive a response from a chat model such as Qwen3:4B."
 
 messages = []
 
